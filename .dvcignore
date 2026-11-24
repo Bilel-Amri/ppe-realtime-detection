@@ -1,0 +1,5 @@
+# Paths ignored by DVC (mirrors of .gitignore for the data directories).
+.git
+.gitignore
+__pycache__
+*.pyc

@@ -1,0 +1,112 @@
+# --------------------------------------------------------------------------- #
+# Orchestration of the PPE detection stack.
+#
+#   docker compose up --build
+#
+#   frontend  -> http://localhost:8080   (React + nginx, proxies /api)
+#   backend   -> http://localhost:8000   (FastAPI + Swagger on /docs)
+#   mlflow    -> http://localhost:5000   (tracking UI + Model Registry)
+#
+# The PostgreSQL service is **not optional**: the MLflow Model Registry
+# requires a SQL backend store, the local file store does not support it.
+# --------------------------------------------------------------------------- #
+
+name: ppe-realtime-detection
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ppe-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlflow}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow} -d ${POSTGRES_DB:-mlflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [ppe]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.2
+    container_name: ppe-mlflow
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # The official image does not ship a PostgreSQL driver: it is installed on
+    # the fly, exactly like the reference compose file of the MLflow project
+    # (mlflow/mlflow -> docker-compose/docker-compose.yml).
+    command:
+      - /bin/bash
+      - -c
+      - |
+        pip install --no-cache-dir "psycopg[binary]" psycopg2-binary &&
+        mlflow server \
+          --backend-store-uri "postgresql://${POSTGRES_USER:-mlflow}:${POSTGRES_PASSWORD:-mlflow}@postgres:5432/${POSTGRES_DB:-mlflow}" \
+          --artifacts-destination /mlflow/artifacts \
+          --serve-artifacts \
+          --host 0.0.0.0 \
+          --port 5000
+    environment:
+      MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR: "false"
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+    networks: [ppe]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ppe-backend
+    restart: unless-stopped
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      PPE_BACKEND: ${PPE_BACKEND:-auto}
+      PPE_CONF: ${PPE_CONF:-0.25}
+      PPE_IOU: ${PPE_IOU:-0.45}
+      PPE_MLFLOW_TRACKING_URI: http://mlflow:5000
+      PPE_ARTIFACT_DIR: /app/artifacts
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # The trained artefacts are mounted from the host: the image stays small
+      # and the weights are not duplicated in every container.
+      - ./artifacts:/app/artifacts:ro
+    networks: [ppe]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: ppe-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks: [ppe]
+
+networks:
+  ppe:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:

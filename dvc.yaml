@@ -1,0 +1,44 @@
+# --------------------------------------------------------------------------- #
+# DVC pipeline: dataset preparation -> training -> evaluation.
+#
+#   dvc init                 (once, creates .dvc/)
+#   dvc remote add -d local ../dvc_store
+#   dvc repro                 (runs the whole pipeline)
+#
+# Every stage is reproducible: the outputs are declared, so DVC refuses to
+# re-run a stage whose dependencies did not change.
+# --------------------------------------------------------------------------- #
+stages:
+  prepare:
+    cmd: >
+      python scripts/prepare_dataset.py
+      --source data/raw/css-data
+      --out data/processed/css-ppe
+    deps:
+      - data/raw/css-data
+    outs:
+      - data/processed/css-ppe
+
+  train:
+    cmd: >
+      python -m src.models.train
+      --data data/processed/css-ppe/dataset.yaml
+    deps:
+      - src
+      - data/processed/css-ppe/dataset.yaml
+    outs:
+      - artifacts/runs/detect/train/weights/best.pt
+
+  evaluate:
+    cmd: >
+      python -m src.models.evaluate
+      --data data/processed/css-ppe/dataset.yaml
+      --model artifacts/runs/detect/train/weights/best.pt
+    deps:
+      - src
+      - artifacts/runs/detect/train/weights/best.pt
+    outs:
+      - artifacts/metrics.json
+      - artifacts/benchmark.json
+      - artifacts/runs/detect/train/weights/best_fp32.onnx
+      - artifacts/runs/detect/train/weights/best_fp16.onnx

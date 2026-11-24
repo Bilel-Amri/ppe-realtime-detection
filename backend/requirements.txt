@@ -1,0 +1,20 @@
+# --------------------------------------------------------------------------- #
+# Runtime dependencies of the FastAPI backend
+# --------------------------------------------------------------------------- #
+fastapi==0.115.2
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.9
+
+# Image handling (drawing + decoding).
+pillow==10.4.0
+numpy==1.26.4
+
+# Inference: Ultralytics provides the PyTorch path and the ONNX exporter,
+# ONNX Runtime provides the accelerated production path.
+ultralytics==8.3.30
+onnxruntime==1.19.2
+
+# Experiment tracking (the API only reads the metrics file, but the package
+# is needed by the training scripts that run in the same environment).
+mlflow==2.16.2

@@ -1,0 +1,2 @@
+train_id,model,mAP50,mAP50-95,Precision,Recall,train_time,epochs,batch,imgsz,rect,fraction,seed,verbose,show_labels,show_conf,show_boxes,device
+train_20261124_020310,yolo11n.pt,0.7339569119995514,0.47697261331267776,0.854196877456667,0.6513746065296783,931.44,30,12,640,False,1.0,42,False,False,False,False,cuda

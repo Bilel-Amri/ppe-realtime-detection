@@ -1,0 +1,88 @@
+# --------------------------------------------------------------------------- #
+# Python
+# --------------------------------------------------------------------------- #
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# --------------------------------------------------------------------------- #
+# Jupyter
+# --------------------------------------------------------------------------- #
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# --------------------------------------------------------------------------- #
+# Tests & tooling caches
+# --------------------------------------------------------------------------- #
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --------------------------------------------------------------------------- #
+# MLOps artefacts - NEVER commit the weights or the data (DVC handles them)
+# --------------------------------------------------------------------------- #
+artifacts/runs/
+artifacts/*.pt
+artifacts/*.onnx
+artifacts/*.json
+!artifacts/.gitkeep
+mlruns/
+dvc_store/
+.dvc/cache/
+
+# Raw and processed data (versioned by DVC, not by Git)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+# --------------------------------------------------------------------------- #
+# Frontend
+# --------------------------------------------------------------------------- #
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-error.log*
+
+# --------------------------------------------------------------------------- #
+# Local configuration
+# --------------------------------------------------------------------------- #
+.env
+.env.local
+*.local
+
+# --------------------------------------------------------------------------- #
+# OS / editors
+# --------------------------------------------------------------------------- #
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
