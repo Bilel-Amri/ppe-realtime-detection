@@ -152,7 +152,7 @@ def check_docker() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify the project installation")
     parser.add_argument("--quiet", action="store_true")
-    args = parser.parse_args()
+    parser.parse_args()
 
     print("=" * 70)
     print("PPE detection - project verification")
