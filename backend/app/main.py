@@ -33,17 +33,17 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from fastapi import FastAPI, File, HTTPException, Query, Response, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, File, HTTPException, Query, Response, UploadFile  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse  # noqa: E402
 
-from .inference import (
+from .inference import (  # noqa: E402  (path bootstrap above)
     APP_VERSION,
     InvalidImageError,
     SERVICE,
     decode_image,
 )
-from .schemas import (
+from .schemas import (  # noqa: E402  (path bootstrap above)
     BoundingBox,
     ClassInfo,
     Detection,
