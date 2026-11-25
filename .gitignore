@@ -59,6 +59,7 @@ dvc_store/
 # Raw and processed data (versioned by DVC, not by Git)
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/*.dvc
 data/processed/*
 !data/processed/.gitkeep
 
