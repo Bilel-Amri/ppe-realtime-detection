@@ -57,7 +57,15 @@ dvc_store/
 .dvc/cache/
 
 # Raw and processed data (versioned by DVC, not by Git)
-data/raw/*
+# Ignore dataset files without ignoring directories tracked by DVC
+data/raw/css-data/*.txt
+data/raw/css-data/*/*/*.jpg
+data/raw/css-data/*/*/*.txt
+
+# Other raw folders not managed by this DVC reference
+data/raw/results_yolov8n_100e/
+data/raw/source_files/
+
 !data/raw/.gitkeep
 !data/raw/*.dvc
 data/processed/*
