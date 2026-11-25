@@ -72,10 +72,11 @@ export default function Dropzone({ onFile, disabled = false, accept = 'image/*' 
         'group relative flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3',
         'rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-200',
         isOver
-          ? 'border-sky-400 bg-sky-500/10 scale-[1.01]'
-          : 'border-slate-600 bg-slate-900/40 hover:border-slate-500 hover:bg-slate-900/70',
+          ? 'scale-[1.01] border-sky-400 bg-sky-500/10'
+          : 'border-line bg-raised hover:border-sky-500/60',
         disabled ? 'pointer-events-none opacity-50' : '',
       ].join(' ')}
+      aria-label="Upload an image"
     >
       <input
         ref={inputRef}
@@ -88,13 +89,14 @@ export default function Dropzone({ onFile, disabled = false, accept = 'image/*' 
         }}
       />
 
-      <div className="rounded-full bg-slate-800 p-4 transition-transform duration-200 group-hover:scale-110">
+      <div className="rounded-full bg-panel p-4 transition-transform duration-200 group-hover:scale-110">
         <svg
           className="h-7 w-7 text-sky-400"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.8"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
@@ -105,16 +107,16 @@ export default function Dropzone({ onFile, disabled = false, accept = 'image/*' 
       </div>
 
       <div className="space-y-1">
-        <p className="text-base font-semibold text-slate-100">
+        <p className="text-base font-semibold text-ink">
           Drag &amp; drop a construction site photo
         </p>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted">
           or <span className="text-sky-400 underline">browse your files</span> &mdash; you can
           also paste an image with Ctrl&nbsp;+&nbsp;V
         </p>
       </div>
 
-      <p className="text-xs uppercase tracking-wide text-slate-500">
+      <p className="text-xs uppercase tracking-wide text-faint">
         JPEG &middot; PNG &middot; WEBP &mdash; max 15 MB
       </p>
     </div>

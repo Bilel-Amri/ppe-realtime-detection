@@ -3,14 +3,13 @@ import { classColorCss } from '../services/palette.js';
 /**
  * Animated confidence bars, one per detected class.
  *
- * The bar width uses a CSS transition so the value slides smoothly instead of
- * jumping - this is what the brief asks for ("scores de probabilités sous
- * forme de barres de progression animées").
+ * The bar width uses a CSS transition so the value slides smoothly instead
+ * of jumping.
  */
 export default function ConfidenceBars({ detections = [], classes = [] }) {
   if (!detections.length) {
     return (
-      <p className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-sm text-slate-400">
+      <p className="rounded-xl border border-line bg-raised p-4 text-sm text-muted">
         No detection yet. Upload an image or start the webcam to see the per-class confidence.
       </p>
     );
@@ -43,7 +42,7 @@ export default function ConfidenceBars({ detections = [], classes = [] }) {
         return (
           <li key={row.classId} className="space-y-1.5">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="flex items-center gap-2 font-medium text-slate-200">
+              <span className="flex items-center gap-2 font-medium text-ink">
                 <span
                   className="inline-block h-3 w-3 rounded-sm"
                   style={{ backgroundColor: classColorCss(row.classId) }}
@@ -51,14 +50,14 @@ export default function ConfidenceBars({ detections = [], classes = [] }) {
                 />
                 {name}
                 {row.count > 1 && (
-                  <span className="rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-300">
+                  <span className="rounded-full bg-raised px-2 py-0.5 text-xs text-muted">
                     x{row.count}
                   </span>
                 )}
               </span>
-              <span className="font-mono text-xs text-slate-400">{percent}%</span>
+              <span className="font-mono text-xs text-muted">{percent}%</span>
             </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-raised">
               <div
                 className="h-full rounded-full transition-all duration-700 ease-out"
                 style={{
