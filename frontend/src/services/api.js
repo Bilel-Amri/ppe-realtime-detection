@@ -4,6 +4,10 @@
  * Every call returns a plain object; errors are normalised into an `ApiError`
  * that carries the HTTP status and the machine readable error code returned
  * by the backend (`invalid_image`, `model_unavailable`, ...).
+ *
+ * Network failures (backend down, DNS, CORS) are also normalised into an
+ * `ApiError` with `status === 0` so the UI can show a friendly message
+ * instead of a raw `TypeError: Failed to fetch`.
  */
 
 const RAW_BASE = import.meta.env?.VITE_API_URL ?? 'http://localhost:8000';
@@ -33,25 +37,36 @@ async function readError(response) {
   return new ApiError(detail, response.status, code);
 }
 
+/** `fetch` that converts connection failures into an `ApiError(status=0)`. */
+async function request(url, options = {}) {
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (networkError) {
+    throw new ApiError(
+      `Cannot reach the API at ${API_BASE} (${networkError?.message ?? 'connection failed'}). ` +
+        'Check that the backend is running.',
+      0,
+      'network',
+    );
+  }
+  if (!response.ok) throw await readError(response);
+  return response;
+}
+
 /** GET /health */
 export async function fetchHealth() {
-  const response = await fetch(`${API_BASE}/health`);
-  if (!response.ok) throw await readError(response);
-  return response.json();
+  return (await request(`${API_BASE}/health`)).json();
 }
 
 /** GET /model/metadata */
 export async function fetchMetadata() {
-  const response = await fetch(`${API_BASE}/model/metadata`);
-  if (!response.ok) throw await readError(response);
-  return response.json();
+  return (await request(`${API_BASE}/model/metadata`)).json();
 }
 
 /** GET /samples */
 export async function fetchSamples() {
-  const response = await fetch(`${API_BASE}/samples`);
-  if (!response.ok) throw await readError(response);
-  return response.json();
+  return (await request(`${API_BASE}/samples`)).json();
 }
 
 /**
@@ -68,12 +83,10 @@ export async function predict(file, options = {}) {
   if (typeof options.iou === 'number') params.set('iou', String(options.iou));
   const query = params.toString();
 
-  const response = await fetch(`${API_BASE}/predict${query ? `?${query}` : ''}`, {
+  return (await request(`${API_BASE}/predict${query ? `?${query}` : ''}`, {
     method: 'POST',
     body: form,
-  });
-  if (!response.ok) throw await readError(response);
-  return response.json();
+  })).json();
 }
 
 /**
@@ -88,11 +101,10 @@ export async function predictVisualize(file, options = {}) {
   if (typeof options.iou === 'number') params.set('iou', String(options.iou));
   const query = params.toString();
 
-  const response = await fetch(`${API_BASE}/predict/visualize${query ? `?${query}` : ''}`, {
+  const response = await request(`${API_BASE}/predict/visualize${query ? `?${query}` : ''}`, {
     method: 'POST',
     body: form,
   });
-  if (!response.ok) throw await readError(response);
   return response.blob();
 }
 

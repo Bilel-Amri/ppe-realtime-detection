@@ -4,22 +4,44 @@ import { classColorCss } from '../services/palette.js';
 /**
  * Canvas that draws the detected bounding boxes on top of the source image.
  *
- * The image is displayed with `object-contain`, so the drawing surface has to
- * be scaled back to the *intrinsic* size of the image before the boxes (which
- * are expressed in image pixels) can be drawn.
+ * The backend returns `bbox` as an **object** (`{x1, y1, x2, y2, ...}`) in
+ * pixels of the original image, so coordinates are read with
+ * `detection.bbox.x1` - never array-destructured.
+ *
+ * The image is drawn into the canvas at its natural resolution and the
+ * canvas is displayed with `width: 100%; height: auto`, so:
+ *   - the aspect ratio is always preserved (no letterboxing), and
+ *   - boxes stay aligned at every browser size (the whole canvas, image
+ *     included, is scaled uniformly by CSS).
+ *
+ * `object-fit: contain` is handled by construction: the canvas box matches
+ * the image aspect ratio, so there is no empty band where boxes could drift.
  */
 export default function BoundingBoxCanvas({
   imageUrl,
   detections = [],
   imageSize = null,
+  showLabels = true,
+  hiddenClasses = [],
+  canvasRef = null,
+  onImageError = null,
   className = '',
 }) {
-  const canvasRef = useRef(null);
-  const imageRef = useRef(null);
+  const internalRef = useRef(null);
+  const ref = canvasRef ?? internalRef;
+
+  // Stable primitive key so a new inline array does not restart the effect.
+  const hiddenKey = hiddenClasses.join('\u0000');
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageUrl) return undefined;
+    const canvas = ref.current;
+    if (!canvas) return undefined;
+
+    if (!imageUrl) {
+      const ctx = canvas.getContext('2d');
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      return undefined;
+    }
 
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -27,8 +49,6 @@ export default function BoundingBoxCanvas({
 
     image.onload = () => {
       if (cancelled) return;
-      imageRef.current = image;
-
       const context = canvas.getContext('2d');
       if (!context) return;
 
@@ -38,13 +58,24 @@ export default function BoundingBoxCanvas({
       context.clearRect(0, 0, canvas.width, canvas.height);
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
+      const hidden = new Set(hiddenKey.split('\u0000').filter(Boolean));
+      const visible = detections.filter((detection) => !hidden.has(detection.label));
+
       const scale = Math.max(1, canvas.width / 700);
-      const fontSize = Math.round(18 * scale);
+      const fontSize = Math.round(16 * scale);
       context.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
       context.textBaseline = 'top';
+      context.lineJoin = 'round';
 
-      detections.forEach((detection) => {
-        const [x1, y1, x2, y2] = detection.bbox;
+      visible.forEach((detection) => {
+        const bbox = detection.bbox;
+        if (!bbox || typeof bbox.x1 !== 'number') return;
+
+        // `bbox` is an object: read the four coordinates explicitly.
+        const x1 = bbox.x1;
+        const y1 = bbox.y1;
+        const x2 = bbox.x2;
+        const y2 = bbox.y2;
         const width = x2 - x1;
         const height = y2 - y1;
         const color = classColorCss(detection.class_id);
@@ -54,19 +85,25 @@ export default function BoundingBoxCanvas({
         context.strokeStyle = color;
         context.strokeRect(x1, y1, width, height);
 
-        // Label background
+        if (!showLabels) return;
+
+        // Label background + text, flipped inside the image when too high.
         const text = `${detection.label} ${(detection.confidence * 100).toFixed(0)}%`;
         const textWidth = context.measureText(text).width;
         const boxHeight = fontSize + 8 * scale;
         const labelTop = Math.max(0, y1 - boxHeight);
+        const labelLeft = Math.min(Math.max(0, x1), canvas.width - textWidth - 10 * scale);
 
         context.fillStyle = color;
-        context.fillRect(x1, labelTop, textWidth + 10 * scale, boxHeight);
+        context.fillRect(labelLeft, labelTop, textWidth + 10 * scale, boxHeight);
 
-        // Label text
         context.fillStyle = '#ffffff';
-        context.fillText(text, x1 + 5 * scale, labelTop + 4 * scale);
+        context.fillText(text, labelLeft + 5 * scale, labelTop + 4 * scale);
       });
+    };
+
+    image.onerror = () => {
+      if (!cancelled) onImageError?.('The image could not be decoded.');
     };
 
     image.src = imageUrl;
@@ -74,22 +111,39 @@ export default function BoundingBoxCanvas({
     return () => {
       cancelled = true;
     };
-  }, [imageUrl, detections]);
+  }, [imageUrl, detections, hiddenKey, showLabels, ref, onImageError]);
+
+  const hidden = new Set(hiddenKey.split('\u0000').filter(Boolean));
+  const visibleCount = detections.filter((detection) => !hidden.has(detection.label)).length;
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl bg-slate-950 ${className}`}>
+    <div
+      className={`relative overflow-hidden rounded-2xl border border-line bg-black ${className}`}
+      data-detection-count={detections.length}
+      data-visible-count={visibleCount}
+    >
       <canvas
-        ref={canvasRef}
+        ref={ref}
         className="block h-auto w-full"
-        aria-label="Detected objects"
-        data-image-size={
-          imageSize ? `${imageSize.width}x${imageSize.height}` : undefined
+        role="img"
+        aria-label={
+          detections.length
+            ? `Annotated image with ${detections.length} detected object(s)`
+            : 'Analysed image'
         }
+        data-image-size={imageSize ? `${imageSize.width}x${imageSize.height}` : undefined}
       />
       {detections.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="rounded-full bg-slate-900/80 px-4 py-2 text-sm text-slate-300">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+          <span className="rounded-full bg-black/75 px-4 py-2 text-center text-sm text-white/90">
             No object detected with the current thresholds
+          </span>
+        </div>
+      )}
+      {detections.length > 0 && visibleCount === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4">
+          <span className="rounded-full bg-black/75 px-4 py-2 text-center text-sm text-white/90">
+            All classes are hidden - enable them in Detection controls
           </span>
         </div>
       )}
