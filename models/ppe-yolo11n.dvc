@@ -1,0 +1,6 @@
+outs:
+- md5: 5328c6508f63add314766acb654fe3ec.dir
+  size: 16179714
+  nfiles: 2
+  hash: md5
+  path: ppe-yolo11n
