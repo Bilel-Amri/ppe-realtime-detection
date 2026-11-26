@@ -13,10 +13,12 @@ appended to the training notebook:
 
 Two deliberate differences with the notebook snippet
 ----------------------------------------------------
-* **The FP16 export no longer overwrites the FP32 one.** Ultralytics always
-  writes ``best.onnx`` next to the checkpoint, so exporting twice leaves a
-  single file. Here each graph is renamed right after the export
-  (``best_fp32.onnx`` / ``best_fp16.onnx``).
+* **The FP16 export can never overwrite the canonical FP32 model.** Ultralytics
+  always writes ``best.onnx`` next to the checkpoint, so exporting twice would
+  leave a single file holding whichever graph was exported last (FP16). Here
+  each graph is renamed right after the export (``best_fp32.onnx`` /
+  ``best_fp16.onnx``) and ``best.onnx`` — the file FastAPI loads — is restored
+  to the FP32 copy at the end of ``export_onnx()``.
 * **The metrics are also written to ``artifacts/metrics.json``.** The API
   (``/model/metadata``) and the LaTeX report read that file, so the numbers
   displayed in the application are exactly the numbers that were measured.
@@ -144,8 +146,9 @@ def export_onnx(best, imgsz: int = CFG.EXPORT_IMGSZ, opset: int = CFG.EXPORT_OPS
     """Export the model to ONNX, in FP32 and in FP16.
 
     Ultralytics always writes the file under the name ``best.onnx``; the two
-    exports are therefore renamed immediately after being produced, so the
-    FP16 graph does not overwrite the FP32 one.
+    exports are therefore renamed immediately after being produced, and
+    ``best.onnx`` (the canonical file loaded by FastAPI) is restored to the
+    FP32 copy afterwards, so the FP16 graph can never overwrite it.
     """
     exported: Dict[str, Optional[Path]] = {"fp32": None, "fp16": None}
 
@@ -156,10 +159,10 @@ def export_onnx(best, imgsz: int = CFG.EXPORT_IMGSZ, opset: int = CFG.EXPORT_OPS
     if fp32_path:
         source = Path(fp32_path)
         BEST_ONNX_FP16.parent.mkdir(parents=True, exist_ok=True)
-        target = BEST_ONNX.parent / "best_fp32.onnx"
-        shutil.copyfile(source, target)
-        exported["fp32"] = target
-        print(f"✅ ONNX (FP32) exported: {target}")
+        fp32_target = BEST_ONNX.parent / "best_fp32.onnx"
+        shutil.copyfile(source, fp32_target)
+        exported["fp32"] = fp32_target
+        print(f"✅ ONNX (FP32) exported: {fp32_target}")
 
     # --- FP16 ------------------------------------------------------------- #
     fp16_path = best.export(
@@ -177,6 +180,15 @@ def export_onnx(best, imgsz: int = CFG.EXPORT_IMGSZ, opset: int = CFG.EXPORT_OPS
         shutil.copyfile(source, target)
         exported["fp16"] = target
         print(f"✅ ONNX (FP16) exported: {target}")
+
+    # --- Canonical file ---------------------------------------------------- #
+    # The FP16 export above rewrites ``best.onnx`` in place (Ultralytics always
+    # exports to that name). Restore it to the FP32 graph: it is the file the
+    # FastAPI backend loads (see ``src/config.BEST_ONNX``) and it must never
+    # silently become FP16.
+    if exported["fp32"] is not None:
+        shutil.copyfile(exported["fp32"], BEST_ONNX)
+        print(f"✅ Canonical ONNX (FP32) restored: {BEST_ONNX}")
 
     return exported
 

@@ -169,9 +169,12 @@ class CFG:
 
 #: Best checkpoint produced by ``src/models/train.py``.
 BEST_PT: Path = RUNS_DIR / "detect" / "train" / "weights" / "best.pt"
-#: ONNX export (FP32) of the same checkpoint.
+#: Canonical ONNX model (FP32) loaded by the FastAPI backend. The FP16 export
+#: must never be written here: ``src/models/evaluate.py::export_onnx``
+#: restores this file to FP32 after the FP16 export.
 BEST_ONNX: Path = RUNS_DIR / "detect" / "train" / "weights" / "best.onnx"
-#: ONNX export (FP16) of the same checkpoint.
+#: Secondary ONNX export (FP16) of the same checkpoint, kept for benchmarking
+#: only — never loaded by the backend.
 BEST_ONNX_FP16: Path = RUNS_DIR / "detect" / "train" / "weights" / "best_fp16.onnx"
 #: Aggregated metrics written by ``src/models/evaluate.py``.
 METRICS_JSON: Path = ARTIFACT_DIR / "metrics.json"
