@@ -40,5 +40,6 @@ stages:
     outs:
       - artifacts/metrics.json
       - artifacts/benchmark.json
+      - artifacts/runs/detect/train/weights/best.onnx
       - artifacts/runs/detect/train/weights/best_fp32.onnx
       - artifacts/runs/detect/train/weights/best_fp16.onnx
